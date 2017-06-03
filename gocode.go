@@ -81,10 +81,10 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	}
 	
 	// setting up the users role
-	stub.PutState("user_type1_1", []byte("ESCO_A"))
+	/*stub.PutState("user_type1_1", []byte("ESCO_A"))
 	stub.PutState("user_type1_2", []byte("ESCO_B"))
 	stub.PutState("user_type1_3", []byte("ESCO_C"))
-	stub.PutState("user_type1_4", []byte("ESCO_D"))	
+	stub.PutState("user_type1_4", []byte("ESCO_D"))	*/
 	
 	return nil, nil
 }
