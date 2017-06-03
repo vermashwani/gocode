@@ -188,7 +188,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		
 		if transType == "BUY" {
 			//Update Quantity Transfer from
-			totalQuantity, er:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
+			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) + int(transQuantity))
 			ok3, err3 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
@@ -206,7 +206,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			}
 			
 			//Update Quantity Transfer to
-			totalQuantity1, er1 :=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
+			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
 			updateQuantity1 :=strconv.Itoa(int(totalQuantity1) - int(transQuantity))
 			ok4, err4 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
@@ -224,7 +224,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			}
 		} else if transType == "SELL" {
 			//Update Quantity Transfer from
-			totalQuantity, er:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
+			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) - int(transQuantity))
 			ok3, err3 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
@@ -242,7 +242,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			}
 			
 			//Update Quantity Transfer to
-			totalQuantity1, er1:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
+			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
 			updateQuantity1 :=  strconv.Itoa(int(totalQuantity1) + int(transQuantity))
 			ok4, err4 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
