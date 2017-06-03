@@ -8,7 +8,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
- 
+
 // SKH is a high level smart contract that
 type SKH struct {
 
