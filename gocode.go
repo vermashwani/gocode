@@ -284,7 +284,9 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		} else {
 			return nil, errors.New("Incorrect Transaction Type")
 		}
-	 } else { return nil, errors.New("Zero records found for update.")}
+	 } else { 
+			return nil, fmt.Errorf("Column lengths -->> . Got: %d. %d.  %d.", len(row.Columns), len(row1.Columns), len(row2.Columns)) }
+			//return nil, errors.New("Zero records found for update.")}
 	}else {
 		return nil, errors.New("Incorrect Status Type")
 	}
