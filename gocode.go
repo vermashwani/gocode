@@ -138,8 +138,8 @@ func (t *SKH) addImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 //acceptTransaction to ESCO
 func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 1 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1 . Got: %d.", len(args))
+	if len(args) != 7 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7 . Got: %d.", len(args))
 	}
 	
 	transId := args[0]
@@ -330,7 +330,7 @@ func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 func (t *SKH) getAllImbalances(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting ALL to query")
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1 . Got: %d.", len(args))
 	}
 
 	//EmployeeId := args[0]
@@ -370,7 +370,7 @@ func (t *SKH) getAllImbalances(stub shim.ChaincodeStubInterface, args []string) 
 func (t *SKH) getImbalance(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting ESCO to query")
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1 . Got: %d.", len(args))
 	}
 
 	Esco := args[0]
@@ -407,7 +407,7 @@ func (t *SKH) getImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting Transaction Id to query")
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 4 . Got: %d.", len(args))
 	}
 
 	TransId := args[0]
@@ -447,7 +447,7 @@ func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting Created By to query")
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
 	}
 
 	From := args[0]
@@ -490,7 +490,7 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
 	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting Created By to query")
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
 	}
 
 	To := args[0]
@@ -542,10 +542,7 @@ func (t *SKH) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 		t := SKH{}
 		return t.acceptTransaction(stub, args)
 	}
-	/*else if function == "acceptImbalance" { 
-		t := SKH{}
-		return t.acceptImbalance(stub, args)
-	} */
+
 	return nil, errors.New("Invalid invoke function name.")
 }
 
