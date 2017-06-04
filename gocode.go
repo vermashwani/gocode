@@ -184,7 +184,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			return nil, errors.New(jsonResp)
 		}		
 		
-		if len(row.Columns) == 1 && len(row1.Columns) == 1 && len(row2.Columns) == 1{
+		if len(row.Columns) > 0 && len(row1.Columns) > 0 && len(row2.Columns) > 0{
 		
 		if transType == "BUY" {
 			//Update Quantity Transfer from
@@ -284,7 +284,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		} else {
 			return nil, errors.New("Incorrect Transaction Type")
 		}
-	 }
+	 } else { return nil, errors.New("Zero records found for update.")}
 	}else {
 		return nil, errors.New("Incorrect Status Type")
 	}
