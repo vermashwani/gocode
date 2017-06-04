@@ -81,10 +81,10 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	}
 	
 	// setting up the users role
-	/*stub.PutState("user_type1_1", []byte("ESCO_A"))
+	stub.PutState("user_type1_1", []byte("ESCO_A"))
 	stub.PutState("user_type1_2", []byte("ESCO_B"))
 	stub.PutState("user_type1_3", []byte("ESCO_C"))
-	stub.PutState("user_type1_4", []byte("ESCO_D"))	*/
+	stub.PutState("user_type1_4", []byte("ESCO_D"))	
 	
 	return nil, nil
 }
@@ -446,7 +446,7 @@ func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 //get All Transaction that are sent for Approval
 func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 1 {
+	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting Created By to query")
 	}
 
@@ -489,7 +489,7 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 //get All Transaction that are received for Approval
 func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
-	if len(args) != 1 {
+	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting Created By to query")
 	}
 
