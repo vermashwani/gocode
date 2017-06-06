@@ -153,21 +153,13 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 
 	myLogger.Debug("function --> acceptTransaction()")
 
-	if len(args) != 7 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7 . Got: %d.", len(args))
+	if len(args) != 2 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
 	}
 	
 	transId := args[0]
-	escoFrom := args[1]
-	escoTo := args[2]
-	transQuantity, _:=strconv.ParseInt(args[3], 10, 0) 
-	transType := args[4]
-	transStatus := args[5]
-	lastUpdateDate := args[6]
+	lastUpdateDate := args[1]
 	
-	myLogger.Debug("function --> addTransaction() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s]", transId, escoFrom, escoTo, transQuantity, transType)
-	
-
 		//Get the row for Transaction
 		var columns []shim.Column
 		col := shim.Column{Value: &shim.Column_String_{String_: transId}}
@@ -178,10 +170,19 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			jsonResp := "{\"Error\":\"Failed to get the data for Transaction Id " + transId + "\"}"
 			return nil, errors.New(jsonResp)
 		}	
-	myLogger.Debug("function --> acceptTransaction() :: transStatus [%s]=[%s]", transStatus, row.Columns[6].GetString_())
+		
+		escoFrom := row.Columns[2].GetString_()
+		escoTo := row.Columns[3].GetString_()
+		transQuantity, _:=strconv.ParseInt(row.Columns[4].GetString_(), 10, 0) 
+		transType := row.Columns[5].GetString_()
+		transStatus := row.Columns[6].GetString_()
 	
-    if(transStatus == row.Columns[6].GetString_()) {
+		myLogger.Debug("function --> addTransaction() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s], Status [%s]", transId, escoFrom, escoTo, transQuantity, transType, transStatus)
+	
+    if(transStatus == "Pending") {
+	
 		myLogger.Debug("function --> acceptTransaction() :: transStatus condition TRUE.")
+		
 		// Get the row for escoFrom
 		var columns1 []shim.Column
 		col1 := shim.Column{Value: &shim.Column_String_{String_: escoFrom}}
@@ -218,6 +219,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			
 			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) + int(transQuantity))
+			
 			myLogger.Debug("function --> acceptTransaction() :: Update EscoFrom Before [%d] After [%d] update",totalQuantity, updateQuantity)
 			
 			ok3, err3 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
@@ -238,6 +240,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Quantity Transfer to
 			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
 			updateQuantity1 :=strconv.Itoa(int(totalQuantity1) - int(transQuantity))
+			
 			myLogger.Debug("function --> acceptTransaction() :: Update EscoTo Before [%d] After [%d] update",totalQuantity1, updateQuantity1)
 			
 			ok4, err4 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
@@ -260,7 +263,9 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			
 			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) - int(transQuantity))
+			
 			myLogger.Debug("function --> acceptTransaction() :: Update EscoFrom Before [%d] After [%d] update",totalQuantity, updateQuantity)
+			
 			ok3, err3 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoFrom}},
@@ -279,6 +284,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Quantity Transfer to
 			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
 			updateQuantity1 :=  strconv.Itoa(int(totalQuantity1) + int(transQuantity))
+			
 			myLogger.Debug("function --> acceptTransaction() :: Update EscoTo Before [%d] After [%d] update",totalQuantity1, updateQuantity1)
 			
 			ok4, err4 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
@@ -295,11 +301,11 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			if !ok4 {
 						return nil, errors.New("Failed replacing row.")
 				    }
-			}else{
-				return nil, errors.New("Incorrect Transaction Type. Should be SELL or BUY")
-			 }
+			}//End Transaction Type Condition
+			
 			//Update Transaction Table on successful From and To ESCO Update	 
 			myLogger.Debug("function --> acceptTransaction() :: Update Status ESCO From [%t] To [%t]", ok3, ok4)
+			
 			if(ok3 && ok4) {
 				myLogger.Debug("function --> acceptTransaction() :: Updateing Transaction table status.")
 					//Update Transaction Status on successful Imbalance Details updation
