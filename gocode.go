@@ -692,6 +692,6 @@ func main() {
 	primitives.SetSecurityLevel("SHA3", 256)
 	err := shim.Start(new(SKH))
 	if err != nil {
-		fmt.Printf("Error starting SKH: %s", err)
+		 fmt.Printf("Error starting SKH: %s", err)
 	}
 }
