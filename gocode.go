@@ -7,7 +7,10 @@ import (
 	"strconv"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/op/go-logging"
 )
+
+var myLogger = logging.MustGetLogger("poc_chaincode")
 
 // SKH is a high level smart contract that
 type SKH struct {
@@ -31,6 +34,7 @@ type Transaction struct{
 	Quantity string `json:"quantity"`
 	Type string `json:"type"`
 	Status string `json:"status"`
+	LastUpdateDate string `json:"lastUpdateDate"`
 }
 
 // to return the verify result
@@ -41,13 +45,16 @@ type VerifyU struct{
 // Init initializes the smart contracts
 func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
+	myLogger.Info("Init")
+	
 	// Check if table already exists
 	_, err := stub.GetTable("ImbalanceDetails")
 	if err == nil {
 		// Table already exists; do not recreate
 		return nil, nil
 	}
-
+	myLogger.Debug("Creating Table --> ImbalanceDetails")
+	
 	// Create ImbalanceDetails Table
 	err = stub.CreateTable("ImbalanceDetails", []*shim.ColumnDefinition{
 		&shim.ColumnDefinition{Name: "esco", Type: shim.ColumnDefinition_STRING, Key: true},
@@ -56,7 +63,7 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 		&shim.ColumnDefinition{Name: "lastUpdateDate", Type: shim.ColumnDefinition_STRING, Key: false},
 	})
 	if err != nil {
-		return nil, errors.New("Failed creating ImbalanceDetails.")
+		return nil, errors.New("Failed creating ImbalanceDetails table.")
 	}
 
 	// Check if Transaction table already exists
@@ -65,6 +72,7 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 		// Table already exists; do not recreate
 		return nil, nil
 	}
+	myLogger.Debug("Creating Table --> Transaction")
 
 	// Create Transaction Table
 	err = stub.CreateTable("Transaction", []*shim.ColumnDefinition{
@@ -75,23 +83,27 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 		&shim.ColumnDefinition{Name: "quantity", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "type", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "status", Type: shim.ColumnDefinition_STRING, Key: false},
+		&shim.ColumnDefinition{Name: "lastUpdateDate", Type: shim.ColumnDefinition_STRING, Key: false},
 	})
 	if err != nil {
-		return nil, errors.New("Failed creating Transaction.")
+		return nil, errors.New("Failed creating Transaction table.")
 	}
 	
-	// setting up the users role
+	// setting up the users esco
 	stub.PutState("user_type1_1", []byte("ESCO_A"))
 	stub.PutState("user_type1_2", []byte("ESCO_B"))
 	stub.PutState("user_type1_3", []byte("ESCO_C"))
 	stub.PutState("user_type1_4", []byte("ESCO_D"))	
 	
+	myLogger.Debug("Init Done.")
 	return nil, nil
 }
 	
 //addImbalance to ESCO
 func (t *SKH) addImbalance(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-
+	
+	myLogger.Debug("function --> addImbalance()")
+	
 		if len(args) != 4 {
 			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 4 . Got: %d.", len(args))
 		}
@@ -132,11 +144,14 @@ func (t *SKH) addImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 			return nil, errors.New("Failed inserting row.")
 		}
 	}
-		return nil, nil
+	myLogger.Debug("function --> addImbalance() Exit.")
+	return nil, nil
 }
 
 //acceptTransaction to ESCO
 func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	myLogger.Debug("function --> acceptTransaction()")
 
 	if len(args) != 7 {
 		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 7 . Got: %d.", len(args))
@@ -150,7 +165,9 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 	transStatus := args[5]
 	lastUpdateDate := args[6]
 	
-    if transStatus == "Pending" {
+	myLogger.Debug("function --> addTransaction() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s]", transId, escoFrom, escoTo, transQuantity, transType)
+	
+
 		//Get the row for Transaction
 		var columns []shim.Column
 		col := shim.Column{Value: &shim.Column_String_{String_: transId}}
@@ -161,7 +178,10 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			jsonResp := "{\"Error\":\"Failed to get the data for Transaction Id " + transId + "\"}"
 			return nil, errors.New(jsonResp)
 		}	
-		
+	myLogger.Debug("function --> acceptTransaction() :: transStatus [%s]=[%s]", transStatus, row.Columns[6].GetString_())
+	
+    if(transStatus == row.Columns[6].GetString_()) {
+		myLogger.Debug("function --> acceptTransaction() :: transStatus condition TRUE.")
 		// Get the row for escoFrom
 		var columns1 []shim.Column
 		col1 := shim.Column{Value: &shim.Column_String_{String_: escoFrom}}
@@ -182,18 +202,28 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		if err2 != nil {
 			jsonResp := "{\"Error\":\"Failed to get the data for ESCO " + escoTo + "\"}"
 			return nil, errors.New(jsonResp)
-		}		
+		}
 		
+		myLogger.Debug("function --> acceptTransaction() :: Transaction Count [%d] FromCount[%d] ToCount[%d]", len(row.Columns), len(row1.Columns), len(row2.Columns))
+
+		//Checking data availability for the Transaction
 		if len(row.Columns) > 0 && len(row1.Columns) > 0 && len(row2.Columns) > 0{
 		
-		if transType == "BUY" {
+		var ok3 bool = false
+		var ok4 bool = false
+		
+		if (transType == "BUY") {
 			//Update Quantity Transfer from
+			myLogger.Debug("function --> acceptTransaction() :: Condition --> BUY")
+			
 			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) + int(transQuantity))
+			myLogger.Debug("function --> acceptTransaction() :: Update EscoFrom Before [%d] After [%d] update",totalQuantity, updateQuantity)
+			
 			ok3, err3 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoFrom}},
-			&shim.Column{Value: &shim.Column_String_{String_: row1.Columns[1].GetString_()}},			
+			&shim.Column{Value: &shim.Column_String_{String_: row1.Columns[1].GetString_()}},	
 			&shim.Column{Value: &shim.Column_String_{String_: updateQuantity}},
 			&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 			}})
@@ -208,6 +238,8 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Quantity Transfer to
 			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
 			updateQuantity1 :=strconv.Itoa(int(totalQuantity1) - int(transQuantity))
+			myLogger.Debug("function --> acceptTransaction() :: Update EscoTo Before [%d] After [%d] update",totalQuantity1, updateQuantity1)
+			
 			ok4, err4 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoTo}},
@@ -222,10 +254,13 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			if !ok4 {
 				return nil, errors.New("Failed replacing row.")
 			}
-		} else if transType == "SELL" {
+		} else if(transType == "SELL") {
 			//Update Quantity Transfer from
+			myLogger.Debug("function --> acceptTransaction() :: Condition --> SELL")
+			
 			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) - int(transQuantity))
+			myLogger.Debug("function --> acceptTransaction() :: Update EscoFrom Before [%d] After [%d] update",totalQuantity, updateQuantity)
 			ok3, err3 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoFrom}},
@@ -244,6 +279,8 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Quantity Transfer to
 			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
 			updateQuantity1 :=  strconv.Itoa(int(totalQuantity1) + int(transQuantity))
+			myLogger.Debug("function --> acceptTransaction() :: Update EscoTo Before [%d] After [%d] update",totalQuantity1, updateQuantity1)
+			
 			ok4, err4 := stub.ReplaceRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoTo}},
@@ -253,51 +290,56 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			}})
 			
 			if err4 != nil {
-				return nil, fmt.Errorf("Failed replacing row [%s]", err4)
-			}
+						return nil, fmt.Errorf("Failed replacing row [%s]", err4)
+					}
 			if !ok4 {
-				return nil, errors.New("Failed replacing row.")
-			}
-
-		if ok3 && ok4 {
-			//Update Transaction Status on successful Imbalance Details updation
-			ok5, err5 := stub.ReplaceRow("Transaction", shim.Row{
-			Columns: []*shim.Column{
-			&shim.Column{Value: &shim.Column_String_{String_: transId}},
-			&shim.Column{Value: &shim.Column_String_{String_: row.Columns[1].GetString_()}},
-			&shim.Column{Value: &shim.Column_String_{String_: row.Columns[2].GetString_()}},
-			&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
-			&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
-			&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
-			&shim.Column{Value: &shim.Column_String_{String_: "Accepted"}},
-			}})
+						return nil, errors.New("Failed replacing row.")
+				    }
+			}else{
+				return nil, errors.New("Incorrect Transaction Type. Should be SELL or BUY")
+			 }
+			//Update Transaction Table on successful From and To ESCO Update	 
+			myLogger.Debug("function --> acceptTransaction() :: Update Status ESCO From [%t] To [%t]", ok3, ok4)
+			if(ok3 && ok4) {
+				myLogger.Debug("function --> acceptTransaction() :: Updateing Transaction table status.")
+					//Update Transaction Status on successful Imbalance Details updation
+					ok5, err5 := stub.ReplaceRow("Transaction", shim.Row{
+					Columns: []*shim.Column{
+					&shim.Column{Value: &shim.Column_String_{String_: transId}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[1].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[2].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: "Accepted"}},
+					&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
+					}})
 			
-			if err5 != nil {
-				return nil, fmt.Errorf("Failed replacing row [%s]", err5)
-			}
-			if !ok5 {
-				return nil, errors.New("Failed replacing row.")
-			}
-		} else {
-			return nil, errors.New("Transaction Rollback code followed..")
-		}			
-		} else {
-			return nil, errors.New("Incorrect Transaction Type")
-		}
-	 } else { 
-			return nil, fmt.Errorf("Column lengths -->> . Got: %d. %d.  %d.", len(row.Columns), len(row1.Columns), len(row2.Columns)) }
-			//return nil, errors.New("Zero records found for update.")}
-	}else {
-		return nil, errors.New("Incorrect Status Type")
-	}
-		return nil, nil
+					if err5 != nil {
+							return nil, fmt.Errorf("Failed replacing row [%s]", err5)
+						}
+					if !ok5 {
+							return nil, errors.New("Failed replacing row.")
+						}
+				}else{
+					return nil, errors.New("Transaction Rollback code will be followed..<TBD>")
+				 }
+	    }else{ 
+			return nil, fmt.Errorf("Column lengths -->> . Got: %d. %d.  %d.", len(row.Columns), len(row1.Columns), len(row2.Columns))
+		   }
+	}else{
+			return nil, errors.New("Incorrect Status Type. Should be Pending")
+	     }
+	return nil, nil
 }
 
 //addTransaction - Add Imbalance Transaction
 func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+	myLogger.Debug("function --> addTransaction()")
+
 		if len(args) != 6 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 6 . Got: %d.", len(args))
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 6. Got: %d.", len(args))
 		}
 		transId:=args[0]
 		transDate:=args[1]
@@ -305,8 +347,9 @@ func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 		to:=args[3]
 		quantity:=args[4]
 		transType:=args[5]
-		var status string = "Pending" //args[6]
 
+		myLogger.Debug("function --> addTransaction() :: TransId [%s], TransDate [%s], From [%s], To [%s], Quantity [%s], TransType [%s]", transId, transDate, from, to, quantity, transType)
+		
 		// Insert a row
 		ok, err := stub.InsertRow("Transaction", shim.Row{
 			Columns: []*shim.Column{
@@ -316,7 +359,8 @@ func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 				&shim.Column{Value: &shim.Column_String_{String_: to}},
 				&shim.Column{Value: &shim.Column_String_{String_: quantity}},
 				&shim.Column{Value: &shim.Column_String_{String_: transType}},
-				&shim.Column{Value: &shim.Column_String_{String_: status}},
+				&shim.Column{Value: &shim.Column_String_{String_: "Pending"}},
+				&shim.Column{Value: &shim.Column_String_{String_: transDate}},
 			}})
 
 		if err != nil {
@@ -325,18 +369,20 @@ func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 		if !ok && err == nil {
 			return nil, errors.New("Row already exists.")
 		}
-		return nil, nil
+		myLogger.Debug("function --> addTransaction() Exit.")
+	return nil, nil
 }
 
 //get All ESCO Imbalances 
 func (t *SKH) getAllImbalances(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+	myLogger.Debug("function --> getAllImbalances()")
+	
 	if len(args) != 1 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1 . Got: %d.", len(args))
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
 	}
 
-	//EmployeeId := args[0]
-	//assignerRole := args[1]
+	myLogger.Debug("function --> getAllImbalances() :: Input [%s]", args[0])
 
 	var columns []shim.Column
 
@@ -344,9 +390,6 @@ func (t *SKH) getAllImbalances(stub shim.ChaincodeStubInterface, args []string) 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve row")
 	}
-	
-	//assignerOrg1, err := stub.GetState(assignerRole)
-	//assignerOrg := string(assignerOrg1)
 	
 	res2E:= []*ImbalanceDetails{}	
 	
@@ -365,17 +408,24 @@ func (t *SKH) getAllImbalances(stub shim.ChaincodeStubInterface, args []string) 
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
 	
+	myLogger.Debug("function --> getAllImbalances() Exit.")
+	
 	return mapB, nil
 }
 
 // to get the imbalance deatils of an ESCO
 func (t *SKH) getImbalance(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+	myLogger.Debug("function --> getImbalance()")
+	
 	if len(args) != 1 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1 . Got: %d.", len(args))
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
 	}
 
 	Esco := args[0]
+	
+	myLogger.Debug("function --> getImbalance() :: ESCO [%s]", Esco)
+	
 	// Get the row pertaining to this Esco
 	var columns []shim.Column
 	col1 := shim.Column{Value: &shim.Column_String_{String_: Esco}}
@@ -389,7 +439,7 @@ func (t *SKH) getImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 
 	// GetRows returns empty message if key does not exist
 	if len(row.Columns) == 0 {
-		jsonResp := "{\"Error\":\"Failed to get the data for ESCO " + Esco + "\"}"
+		jsonResp := "{\"Error\":\"No Data available for ESCO " + Esco + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 	res2E := ImbalanceDetails{}
@@ -402,17 +452,24 @@ func (t *SKH) getImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
 	
+	myLogger.Debug("function --> getImbalance() Exit.")
+	
 	return mapB, nil
 }
 
 // to get the Transaction deatils
 func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+	myLogger.Debug("function --> getTransaction()")
+	
 	if len(args) != 1 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 4 . Got: %d.", len(args))
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
 	}
 
 	TransId := args[0]
+	
+	myLogger.Debug("function --> getTransaction() :: TransId [%s]", TransId)
+	
 	// Get the row pertaining to this Transaction
 	var columns []shim.Column
 	col1 := shim.Column{Value: &shim.Column_String_{String_: TransId}}
@@ -426,7 +483,7 @@ func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 
 	// GetRows returns empty message if key does not exist
 	if len(row.Columns) == 0 {
-		jsonResp := "{\"Error\":\"Failed to get the data for Transaction " + TransId + "\"}"
+		jsonResp := "{\"Error\":\"No Data available for Transaction Id " + TransId + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 	res2E := Transaction{}
@@ -438,9 +495,12 @@ func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 	res2E.Quantity = row.Columns[4].GetString_()
 	res2E.Type = row.Columns[5].GetString_()
 	res2E.Status = row.Columns[6].GetString_()
-	
+	res2E.LastUpdateDate = row.Columns[7].GetString_()
+		
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
+	
+	myLogger.Debug("function --> getTransaction() Exit.")
 	
 	return mapB, nil
 }
@@ -448,13 +508,16 @@ func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 //get All Transaction that are sent for Approval
 func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+	myLogger.Debug("function --> getTransactionSent()")
+	
 	if len(args) != 2 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2. Got: %d.", len(args))
 	}
 
-	From := args[0]
+	Esco := args[0]
 	Status := args[1]
-	//assignerRole := args[1]
+	
+	myLogger.Debug("function --> getTransactionSent() :: ESCO [%s], Status [%s]", Esco, Status)
 
 	var columns []shim.Column
 
@@ -462,10 +525,6 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve row")
 	}
-	
-	//assignerOrg1, err := stub.GetState(assignerRole)
-	//assignerOrg := string(assignerOrg1)
-	
 		
 	res2E:= []*Transaction{}	
 	
@@ -478,26 +537,33 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 		newApp.Quantity = row.Columns[4].GetString_()
 		newApp.Type = row.Columns[5].GetString_()
 		newApp.Status = row.Columns[6].GetString_()
+		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if newApp.From == From && newApp.Status == Status{
+		if((newApp.From == Esco && newApp.To != Esco) && (newApp.Status == Status)){
 		res2E=append(res2E,newApp)		
 		}				
 	}
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
+	
+	myLogger.Debug("function --> getTransactionSent() Exit.")
+	
 	return mapB, nil
 }
 
 //get All Transaction that are received for Approval
 func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
+	myLogger.Debug("function --> getTransactionReceived()")
+	
 	if len(args) != 2 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2. Got: %d.", len(args))
 	}
 
-	To := args[0]
+	Esco := args[0]
 	Status := args[1]
-	//assignerRole := args[1]
+
+	myLogger.Debug("function --> getTransactionReceived() :: ESCO [%s], Status [%s]", Esco, Status)
 
 	var columns []shim.Column
 
@@ -505,10 +571,6 @@ func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []st
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve row")
 	}
-	
-	//assignerOrg1, err := stub.GetState(assignerRole)
-	//assignerOrg := string(assignerOrg1)
-	
 		
 	res2E:= []*Transaction{}	
 	
@@ -521,13 +583,60 @@ func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []st
 		newApp.Quantity = row.Columns[4].GetString_()
 		newApp.Type = row.Columns[5].GetString_()
 		newApp.Status = row.Columns[6].GetString_()
+		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if newApp.To == To && newApp.Status == Status{
+		if((newApp.To == Esco && newApp.From != Esco) && (newApp.Status == Status)){
 		res2E=append(res2E,newApp)		
 		}				
 	}
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
+	
+	myLogger.Debug("function --> getTransactionReceived() Exit.")
+	
+	return mapB, nil
+}
+
+//get All Accepted Transactions
+func (t *SKH) getTransactionAccepted(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	myLogger.Debug("function --> getTransactionAccepted()")
+
+	if len(args) != 2 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2. Got: %d.", len(args))
+	}
+	Esco := args[0]
+	Status := args[1]
+	
+	myLogger.Debug("function --> getTransactionAccepted() :: ESCO [%s], Status [%s]", Esco, Status)
+	
+	var columns []shim.Column
+
+	rows, err := stub.GetRows("Transaction", columns)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to retrieve row")
+	}
+	
+	res2E:= []*Transaction{}	
+	
+	for row := range rows {		
+		newApp:= new(Transaction)
+		newApp.TransId = row.Columns[0].GetString_()
+		newApp.TransDate = row.Columns[1].GetString_()
+		newApp.From = row.Columns[2].GetString_()
+		newApp.To = row.Columns[3].GetString_()
+		newApp.Quantity = row.Columns[4].GetString_()
+		newApp.Type = row.Columns[5].GetString_()
+		newApp.Status = row.Columns[6].GetString_()
+		newApp.LastUpdateDate = row.Columns[7].GetString_()
+		
+		if((newApp.From == Esco || newApp.To == Esco) && (newApp.Status == Status)){
+		res2E=append(res2E,newApp)	
+		}				
+	}
+    mapB, _ := json.Marshal(res2E)
+    fmt.Println(string(mapB))
+	myLogger.Debug("function --> getTransactionAccepted() Exit.")
 	return mapB, nil
 }
 
@@ -545,7 +654,7 @@ func (t *SKH) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 		return t.acceptTransaction(stub, args)
 	}
 
-	return nil, errors.New("Invalid invoke function name.")
+	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
 }
 
 // query queries the chaincode
@@ -566,8 +675,11 @@ func (t *SKH) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	}else if function == "getTransactionReceived" { 
 			 t := SKH{}
 			 return t.getTransactionReceived(stub, args)
+	}else if function == "getTransactionAccepted" { 
+			 t := SKH{}
+			 return t.getTransactionAccepted(stub, args)
 	}
-	return nil, nil
+	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
 }
 
 func main() {
