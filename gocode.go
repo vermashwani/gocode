@@ -154,12 +154,13 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 
 	fmt.Println("function --> acceptTransaction()")
 
-	if len(args) != 2 {
+	if len(args) != 3 {
 		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
 	}
 	
 	transId := args[0]
 	lastUpdateDate := args[1]
+	stat := args[2]
 	
 		//Get the row for Transaction
 		var columns []shim.Column
@@ -180,7 +181,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 	
 		fmt.Println("function --> addTransaction() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s], Status [%s]", transId, escoFrom, escoTo, transQuantity, transType, transStatus)
 	
-    if(transStatus == "Pending") {
+    if transStatus == "Pending" && stat == "Pending"{
 	
 		fmt.Println("function --> acceptTransaction() :: transStatus condition TRUE.")
 		
@@ -210,9 +211,6 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 
 		//Checking data availability for the Transaction
 		if len(row.Columns) > 0 && len(row1.Columns) > 0 && len(row2.Columns) > 0{
-		
-		var ok3 bool = false
-		var ok4 bool = false
 		
 		if (transType == "BUY") {
 			//Update Quantity Transfer from
@@ -258,6 +256,35 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			if !ok4 {
 				return nil, errors.New("Failed replacing row.")
 			}
+			
+						//Update Transaction Table on successful From and To ESCO Update	 
+			fmt.Println("function --> acceptTransaction() :: Update Status ESCO From [%t] To [%t]", ok3, ok4)
+			
+			if(ok3 && ok4) {
+				fmt.Println("function --> acceptTransaction() :: Updateing Transaction table status.")
+					//Update Transaction Status on successful Imbalance Details updation
+					ok5, err5 := stub.ReplaceRow("Transaction", shim.Row{
+					Columns: []*shim.Column{
+					&shim.Column{Value: &shim.Column_String_{String_: transId}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[1].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[2].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: "Accepted"}},
+					&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
+					}})
+			
+					if err5 != nil {
+							return nil, fmt.Errorf("Failed replacing row [%s]", err5)
+						}
+					if !ok5 {
+							return nil, errors.New("Failed replacing row.")
+						}
+				}else{
+					return nil, errors.New("Transaction Rollback code.")
+				 }
+				 
 		} else if(transType == "SELL") {
 			//Update Quantity Transfer from
 			fmt.Println("function --> acceptTransaction() :: Condition --> SELL")
@@ -302,8 +329,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			if !ok4 {
 						return nil, errors.New("Failed replacing row.")
 				    }
-			}//End Transaction Type Condition
-			
+					
 			//Update Transaction Table on successful From and To ESCO Update	 
 			fmt.Println("function --> acceptTransaction() :: Update Status ESCO From [%t] To [%t]", ok3, ok4)
 			
@@ -329,13 +355,15 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 							return nil, errors.New("Failed replacing row.")
 						}
 				}else{
-					return nil, errors.New("Transaction Rollback code will be followed..<TBD>")
+					return nil, errors.New("Transaction Rollback code.")
 				 }
-	    }else{ 
+			}//End Transaction Type Condition
+
+			}else{ 
 			return nil, fmt.Errorf("Column lengths -->> . Got: %d. %d.  %d.", len(row.Columns), len(row1.Columns), len(row2.Columns))
 		   }
 	}else{
-			return nil, errors.New("Incorrect Status Type. Should be Pending")
+			return nil, fmt.Errorf("Incorrect Status Type. Should be Pending() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s], Status [%s]", transId, escoFrom, escoTo, transQuantity, transType, transStatus)
 	     }
 	return nil, nil
 }
