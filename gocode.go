@@ -154,13 +154,12 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 
 	fmt.Println("function --> acceptTransaction()")
 
-	if len(args) != 3 {
+	if len(args) != 2 {
 		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2 . Got: %d.", len(args))
 	}
 	
 	transId := args[0]
 	lastUpdateDate := args[1]
-	stat := args[2]
 	
 		//Get the row for Transaction
 		var columns []shim.Column
@@ -181,7 +180,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 	
 		fmt.Println("function --> addTransaction() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s], Status [%s]", transId, escoFrom, escoTo, transQuantity, transType, transStatus)
 	
-    if transStatus == "Pending" && stat == "Pending"{
+    if transStatus == "Pending" {
 	
 		fmt.Println("function --> acceptTransaction() :: transStatus condition TRUE.")
 		
@@ -212,7 +211,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		//Checking data availability for the Transaction
 		if len(row.Columns) > 0 && len(row1.Columns) > 0 && len(row2.Columns) > 0{
 		
-		if (transType == "BUY") {
+		if transType == "BUY" {
 			//Update Quantity Transfer from
 			fmt.Println("function --> acceptTransaction() :: Condition --> BUY")
 			
@@ -260,7 +259,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 						//Update Transaction Table on successful From and To ESCO Update	 
 			fmt.Println("function --> acceptTransaction() :: Update Status ESCO From [%t] To [%t]", ok3, ok4)
 			
-			if(ok3 && ok4) {
+			if ok3 && ok4 {
 				fmt.Println("function --> acceptTransaction() :: Updateing Transaction table status.")
 					//Update Transaction Status on successful Imbalance Details updation
 					ok5, err5 := stub.ReplaceRow("Transaction", shim.Row{
@@ -285,7 +284,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 					return nil, errors.New("Transaction Rollback code.")
 				 }
 				 
-		} else if(transType == "SELL") {
+		} else if transType == "SELL" {
 			//Update Quantity Transfer from
 			fmt.Println("function --> acceptTransaction() :: Condition --> SELL")
 			
@@ -333,7 +332,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Transaction Table on successful From and To ESCO Update	 
 			fmt.Println("function --> acceptTransaction() :: Update Status ESCO From [%t] To [%t]", ok3, ok4)
 			
-			if(ok3 && ok4) {
+			if ok3 && ok4 {
 				fmt.Println("function --> acceptTransaction() :: Updateing Transaction table status.")
 					//Update Transaction Status on successful Imbalance Details updation
 					ok5, err5 := stub.ReplaceRow("Transaction", shim.Row{
@@ -363,7 +362,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			return nil, fmt.Errorf("Column lengths -->> . Got: %d. %d.  %d.", len(row.Columns), len(row1.Columns), len(row2.Columns))
 		   }
 	}else{
-			return nil, fmt.Errorf("Incorrect Status Type. Should be Pending() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s], Status [%s]", transId, escoFrom, escoTo, transQuantity, transType, transStatus)
+			return nil, errors.New("Incorrect Status Type -->> Should be Pending.")
 	     }
 	return nil, nil
 }
@@ -574,7 +573,7 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 		newApp.Status = row.Columns[6].GetString_()
 		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if((newApp.From == Esco && newApp.To != Esco) && (newApp.Status == Status)){
+		if (newApp.From == Esco && newApp.To != Esco) && (newApp.Status == Status) {
 		res2E=append(res2E,newApp)		
 		}				
 	}
@@ -620,7 +619,7 @@ func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []st
 		newApp.Status = row.Columns[6].GetString_()
 		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if((newApp.To == Esco && newApp.From != Esco) && (newApp.Status == Status)){
+		if (newApp.To == Esco && newApp.From != Esco) && (newApp.Status == Status) {
 		res2E=append(res2E,newApp)		
 		}				
 	}
@@ -665,7 +664,7 @@ func (t *SKH) getTransactionAccepted(stub shim.ChaincodeStubInterface, args []st
 		newApp.Status = row.Columns[6].GetString_()
 		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if((newApp.From == Esco || newApp.To == Esco) && (newApp.Status == Status)){
+		if (newApp.From == Esco || newApp.To == Esco) && (newApp.Status == Status) {
 		res2E=append(res2E,newApp)	
 		}				
 	}
