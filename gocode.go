@@ -45,7 +45,8 @@ type VerifyU struct{
 // Init initializes the smart contracts
 func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
-	fmt.Println("Init")
+	fmt.Println("Init..")
+	fmt.Errorf("Ashwani Init..")
 	
 	// Check if table already exists
 	_, err := stub.GetTable("ImbalanceDetails")
