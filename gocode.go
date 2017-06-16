@@ -367,6 +367,74 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 	return nil, nil
 }
 
+//changeTransactionStatus to ESCO
+func (t *SKH) changeTransactionStatus(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	fmt.Println("function --> changeTransactionStatus()")
+
+	if len(args) != 3 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 3 . Got: %d.", len(args))
+	}
+	
+	transId := args[0]
+	lastUpdateDate := args[1]
+	newStatus:=args[2]
+	
+	if newStatus == "Cancel" || newStatus == "Reject" {
+	
+		//Get the row for Transaction
+		var columns []shim.Column
+		col := shim.Column{Value: &shim.Column_String_{String_: transId}}
+		columns = append(columns, col)
+
+		row, err := stub.GetRow("Transaction", columns)
+		if err != nil {
+			jsonResp := "{\"Error\":\"Failed to get the data for Transaction Id " + transId + "\"}"
+			return nil, errors.New(jsonResp)
+		}	
+	
+		//Checking Transaction availability in blocks
+		if len(row.Columns) > 0 {
+		
+			transStatus := row.Columns[6].GetString_()
+		
+			if transStatus == "Pending" {
+			
+			//Update Transaction Table Status	 
+					fmt.Println("function --> changeTransactionStatus() :: Updateing Transaction table status.")
+				
+					//Update Transaction Status on successful Imbalance Details updation
+					ok, err1 := stub.ReplaceRow("Transaction", shim.Row{
+					Columns: []*shim.Column{
+					&shim.Column{Value: &shim.Column_String_{String_: transId}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[1].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[2].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: newStatus}},
+					&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
+					}})
+			
+					if err1 != nil {
+							return nil, fmt.Errorf("Failed replacing row [%s]", err1)
+						}
+					if !ok {
+							return nil, errors.New("Failed replacing row.")
+						}
+			}else{
+				return nil, errors.New("Incorrect Status Type -->> Selected Transaction Status Should be Pending.")
+				}
+		 }else{ 
+			return nil, fmt.Errorf("Column lengths -->> . Got: %d.", len(row.Columns))
+		   }
+		 } else {
+			return nil, errors.New("Incorrect Status Type -->> New Transaction Status should be Cancel or Reject only.")
+		 }
+
+	return nil, nil
+}
+
 //addTransaction - Add Imbalance Transaction
 func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 
@@ -544,14 +612,13 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 
 	fmt.Println("function --> getTransactionSent()")
 	
-	if len(args) != 2 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2. Got: %d.", len(args))
+	if len(args) != 1 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
 	}
 
 	Esco := args[0]
-	Status := args[1]
 	
-	fmt.Println("function --> getTransactionSent() :: ESCO [%s], Status [%s]", Esco, Status)
+	fmt.Println("function --> getTransactionSent() :: ESCO [%s]", Esco)
 
 	var columns []shim.Column
 
@@ -573,7 +640,7 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 		newApp.Status = row.Columns[6].GetString_()
 		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if (newApp.From == Esco && newApp.To != Esco) && (newApp.Status == Status) {
+		if (newApp.From == Esco && newApp.To != Esco) && (newApp.Status == "Pending" || newApp.Status == "Cancel" || newApp.Status == "Reject") {
 		res2E=append(res2E,newApp)		
 		}				
 	}
@@ -590,14 +657,13 @@ func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []st
 
 	fmt.Println("function --> getTransactionReceived()")
 	
-	if len(args) != 2 {
-		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 2. Got: %d.", len(args))
+	if len(args) != 1 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
 	}
 
 	Esco := args[0]
-	Status := args[1]
 
-	fmt.Println("function --> getTransactionReceived() :: ESCO [%s], Status [%s]", Esco, Status)
+	fmt.Println("function --> getTransactionReceived() :: ESCO [%s]", Esco)
 
 	var columns []shim.Column
 
@@ -619,7 +685,7 @@ func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []st
 		newApp.Status = row.Columns[6].GetString_()
 		newApp.LastUpdateDate = row.Columns[7].GetString_()
 		
-		if (newApp.To == Esco && newApp.From != Esco) && (newApp.Status == Status) {
+		if (newApp.To == Esco && newApp.From != Esco) && (newApp.Status == "Pending" || newApp.Status == "Cancel" || newApp.Status == "Reject") {
 		res2E=append(res2E,newApp)		
 		}				
 	}
@@ -686,6 +752,9 @@ func (t *SKH) Invoke(stub shim.ChaincodeStubInterface, function string, args []s
 	}else if function == "acceptTransaction" { 
 		t := SKH{}
 		return t.acceptTransaction(stub, args)
+	}else if function == "changeTransactionStatus" {
+			t := SKH{}
+		return t.changeTransactionStatus(stub, args)
 	}
 
 	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
