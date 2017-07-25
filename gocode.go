@@ -62,7 +62,7 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	// Create ImbalanceDetails Table
 	err = stub.CreateTable("ImbalanceDetails", []*shim.ColumnDefinition{
 		&shim.ColumnDefinition{Name: "esco", Type: shim.ColumnDefinition_STRING, Key: true},
-		&shim.ColumnDefinition{Name: "escoName", Type: shim.ColumnDefinition_STRING, Key: true},
+		&shim.ColumnDefinition{Name: "escoName", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "userId", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "totalImbalance", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "lastUpdateDate", Type: shim.ColumnDefinition_STRING, Key: false},
