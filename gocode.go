@@ -20,6 +20,7 @@ type SKH struct {
 // ImbalanceDetails is for storing Imbalance Details
 type ImbalanceDetails struct{
 	Esco string `json:"esco"`
+	EscoName string `json:"escoName"`
 	UserId string `json:"userId"`
 	TotalImbalance string `json:"totalImbalance"`
 	LastUpdateDate string `json:"lastUpdateDate"`
@@ -30,7 +31,9 @@ type Transaction struct{
 	TransId string `json:"transId"`
 	TransDate string `json:"transDate"`
 	From string `json:"from"`
+	FromName string `json:"fromName"`
 	To string `json:"to"`
+	ToName string `json:"toName"`
 	Quantity string `json:"quantity"`
 	Type string `json:"type"`
 	Status string `json:"status"`
@@ -59,6 +62,7 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 	// Create ImbalanceDetails Table
 	err = stub.CreateTable("ImbalanceDetails", []*shim.ColumnDefinition{
 		&shim.ColumnDefinition{Name: "esco", Type: shim.ColumnDefinition_STRING, Key: true},
+		&shim.ColumnDefinition{Name: "escoName", Type: shim.ColumnDefinition_STRING, Key: true},
 		&shim.ColumnDefinition{Name: "userId", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "totalImbalance", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "lastUpdateDate", Type: shim.ColumnDefinition_STRING, Key: false},
@@ -80,7 +84,9 @@ func (t *SKH) Init(stub shim.ChaincodeStubInterface, function string, args []str
 		&shim.ColumnDefinition{Name: "transId", Type: shim.ColumnDefinition_STRING, Key: true},
 		&shim.ColumnDefinition{Name: "transDate", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "from", Type: shim.ColumnDefinition_STRING, Key: false},
+		&shim.ColumnDefinition{Name: "fromName", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "to", Type: shim.ColumnDefinition_STRING, Key: false},
+		&shim.ColumnDefinition{Name: "toName", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "quantity", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "type", Type: shim.ColumnDefinition_STRING, Key: false},
 		&shim.ColumnDefinition{Name: "status", Type: shim.ColumnDefinition_STRING, Key: false},
@@ -105,14 +111,15 @@ func (t *SKH) addImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 	
 	fmt.Println("function --> addImbalance()")
 	
-		if len(args) != 4 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 4 . Got: %d.", len(args))
+		if len(args) != 5 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 5 . Got: %d.", len(args))
 		}
 	
 	esco:=args[0]
-	userId:=args[1]
-	totalImbalance:=args[2]
-	lastUpdateDate:=args[3]
+	escoName:=args[1]
+	userId:=args[2]
+	totalImbalance:=args[3]
+	lastUpdateDate:=args[4]
 		
 	/*assignerOrg1, err := stub.GetState(args[11])
 	assignerOrg := string(assignerOrg1)
@@ -133,6 +140,7 @@ func (t *SKH) addImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 		ok, err := stub.InsertRow("ImbalanceDetails", shim.Row{
 			Columns: []*shim.Column{
 				&shim.Column{Value: &shim.Column_String_{String_: esco}},
+				&shim.Column{Value: &shim.Column_String_{String_: escoName}},
 				&shim.Column{Value: &shim.Column_String_{String_: userId}},
 				&shim.Column{Value: &shim.Column_String_{String_: totalImbalance}},
 				&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
@@ -173,7 +181,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		}	
 		
 		escoFrom := row.Columns[2].GetString_()
-		escoTo := row.Columns[3].GetString_()
+		escoTo := row.Columns[4].GetString_()
 		transQuantity, _:=strconv.ParseInt(row.Columns[4].GetString_(), 10, 0) 
 		transType := row.Columns[5].GetString_()
 		transStatus := row.Columns[6].GetString_()
@@ -224,6 +232,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoFrom}},
 			&shim.Column{Value: &shim.Column_String_{String_: row1.Columns[1].GetString_()}},	
+			&shim.Column{Value: &shim.Column_String_{String_: row1.Columns[2].GetString_()}},	
 			&shim.Column{Value: &shim.Column_String_{String_: updateQuantity}},
 			&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 			}})
@@ -245,6 +254,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoTo}},
 			&shim.Column{Value: &shim.Column_String_{String_: row2.Columns[1].GetString_()}},			
+			&shim.Column{Value: &shim.Column_String_{String_: row2.Columns[2].GetString_()}},	
 			&shim.Column{Value: &shim.Column_String_{String_: updateQuantity1}},
 			&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 			}})
@@ -270,6 +280,8 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[6].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[7].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: "Accepted"}},
 					&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 					}})
@@ -297,6 +309,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoFrom}},
 			&shim.Column{Value: &shim.Column_String_{String_: row1.Columns[1].GetString_()}},
+			&shim.Column{Value: &shim.Column_String_{String_: row1.Columns[2].GetString_()}},
 			&shim.Column{Value: &shim.Column_String_{String_: updateQuantity}},
 			&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 			}})
@@ -318,6 +331,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			Columns: []*shim.Column{
 			&shim.Column{Value: &shim.Column_String_{String_: escoTo}},
 			&shim.Column{Value: &shim.Column_String_{String_: row2.Columns[1].GetString_()}},
+			&shim.Column{Value: &shim.Column_String_{String_: row2.Columns[2].GetString_()}},
 			&shim.Column{Value: &shim.Column_String_{String_: updateQuantity1}},
 			&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 			}})
@@ -343,6 +357,8 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[6].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[7].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: "Accepted"}},
 					&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 					}})
@@ -412,6 +428,8 @@ func (t *SKH) changeTransactionStatus(stub shim.ChaincodeStubInterface, args []s
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[3].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[4].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[5].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[6].GetString_()}},
+					&shim.Column{Value: &shim.Column_String_{String_: row.Columns[7].GetString_()}},
 					&shim.Column{Value: &shim.Column_String_{String_: newStatus}},
 					&shim.Column{Value: &shim.Column_String_{String_: lastUpdateDate}},
 					}})
@@ -440,15 +458,17 @@ func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 
 	fmt.Println("function --> addTransaction()")
 
-		if len(args) != 6 {
-			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 6. Got: %d.", len(args))
+		if len(args) != 8 {
+			return nil, fmt.Errorf("Incorrect number of arguments. Expecting 8. Got: %d.", len(args))
 		}
 		transId:=args[0]
 		transDate:=args[1]
 		from:=args[2]
-		to:=args[3]
-		quantity:=args[4]
-		transType:=args[5]
+		fromName:=args[3]
+		to:=args[4]
+		toName:=args[5]
+		quantity:=args[6]
+		transType:=args[7]
 
 		fmt.Println("function --> addTransaction() :: TransId [%s], TransDate [%s], From [%s], To [%s], Quantity [%s], TransType [%s]", transId, transDate, from, to, quantity, transType)
 		
@@ -458,7 +478,9 @@ func (t *SKH) addTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 				&shim.Column{Value: &shim.Column_String_{String_: transId}},
 				&shim.Column{Value: &shim.Column_String_{String_: transDate}},
 				&shim.Column{Value: &shim.Column_String_{String_: from}},
+				&shim.Column{Value: &shim.Column_String_{String_: fromName}},
 				&shim.Column{Value: &shim.Column_String_{String_: to}},
+				&shim.Column{Value: &shim.Column_String_{String_: toName}},
 				&shim.Column{Value: &shim.Column_String_{String_: quantity}},
 				&shim.Column{Value: &shim.Column_String_{String_: transType}},
 				&shim.Column{Value: &shim.Column_String_{String_: "Pending"}},
@@ -498,9 +520,10 @@ func (t *SKH) getAllImbalances(stub shim.ChaincodeStubInterface, args []string) 
 	for row := range rows {		
 		newApp:= new(ImbalanceDetails)
 		newApp.Esco = row.Columns[0].GetString_()
-		newApp.UserId = row.Columns[1].GetString_()
-		newApp.TotalImbalance = row.Columns[2].GetString_()
-		newApp.LastUpdateDate = row.Columns[3].GetString_()
+		newApp.EscoName = row.Columns[1].GetString_()
+		newApp.UserId = row.Columns[2].GetString_()
+		newApp.TotalImbalance = row.Columns[3].GetString_()
+		newApp.LastUpdateDate = row.Columns[4].GetString_()
 		
 		//if newApp.EmployeeId == EmployeeId && newApp.Source == assignerOrg{
 		res2E=append(res2E,newApp)		
@@ -547,9 +570,10 @@ func (t *SKH) getImbalance(stub shim.ChaincodeStubInterface, args []string) ([]b
 	res2E := ImbalanceDetails{}
 	
 	res2E.Esco = row.Columns[0].GetString_()
-	res2E.UserId = row.Columns[1].GetString_()
-	res2E.TotalImbalance = row.Columns[2].GetString_()
-	res2E.LastUpdateDate = row.Columns[3].GetString_()
+	res2E.EscoName = row.Columns[1].GetString_()
+	res2E.UserId = row.Columns[2].GetString_()
+	res2E.TotalImbalance = row.Columns[3].GetString_()
+	res2E.LastUpdateDate = row.Columns[4].GetString_()
 
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
@@ -593,11 +617,13 @@ func (t *SKH) getTransaction(stub shim.ChaincodeStubInterface, args []string) ([
 	res2E.TransId = row.Columns[0].GetString_()
 	res2E.TransDate = row.Columns[1].GetString_()
 	res2E.From = row.Columns[2].GetString_()
-	res2E.To = row.Columns[3].GetString_()
-	res2E.Quantity = row.Columns[4].GetString_()
-	res2E.Type = row.Columns[5].GetString_()
-	res2E.Status = row.Columns[6].GetString_()
-	res2E.LastUpdateDate = row.Columns[7].GetString_()
+	res2E.FromName = row.Columns[3].GetString_()
+	res2E.To = row.Columns[4].GetString_()
+	res2E.ToName = row.Columns[5].GetString_()
+	res2E.Quantity = row.Columns[6].GetString_()
+	res2E.Type = row.Columns[7].GetString_()
+	res2E.Status = row.Columns[8].GetString_()
+	res2E.LastUpdateDate = row.Columns[9].GetString_()
 		
     mapB, _ := json.Marshal(res2E)
     fmt.Println(string(mapB))
@@ -634,11 +660,13 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
 		newApp.TransId = row.Columns[0].GetString_()
 		newApp.TransDate = row.Columns[1].GetString_()
 		newApp.From = row.Columns[2].GetString_()
-		newApp.To = row.Columns[3].GetString_()
-		newApp.Quantity = row.Columns[4].GetString_()
-		newApp.Type = row.Columns[5].GetString_()
-		newApp.Status = row.Columns[6].GetString_()
-		newApp.LastUpdateDate = row.Columns[7].GetString_()
+		newApp.FromName = row.Columns[3].GetString_()
+		newApp.To = row.Columns[4].GetString_()
+		newApp.ToName = row.Columns[5].GetString_()
+		newApp.Quantity = row.Columns[6].GetString_()
+		newApp.Type = row.Columns[7].GetString_()
+		newApp.Status = row.Columns[8].GetString_()
+		newApp.LastUpdateDate = row.Columns[9].GetString_()
 		
 		if (newApp.From == Esco && newApp.To != Esco) && (newApp.Status == "Pending" || newApp.Status == "Cancel" || newApp.Status == "Reject") {
 		res2E=append(res2E,newApp)		
@@ -648,6 +676,53 @@ func (t *SKH) getTransactionSent(stub shim.ChaincodeStubInterface, args []string
     fmt.Println(string(mapB))
 	
 	fmt.Println("function --> getTransactionSent() Exit.")
+	
+	return mapB, nil
+}
+
+//get All Transactions
+func (t *SKH) getAllTransactions(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+
+	fmt.Println("function --> getAllTransactions()")
+	
+	if len(args) != 1 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting 1. Got: %d.", len(args))
+	}
+
+	Esco := args[0]
+	
+	fmt.Println("function --> getAllTransactions() :: ESCO [%s]", Esco)
+
+	var columns []shim.Column
+
+	rows, err := stub.GetRows("Transaction", columns)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to retrieve row")
+	}
+		
+	res2E:= []*Transaction{}	
+	
+	for row := range rows {		
+		newApp:= new(Transaction)
+		newApp.TransId = row.Columns[0].GetString_()
+		newApp.TransDate = row.Columns[1].GetString_()
+		newApp.From = row.Columns[2].GetString_()
+		newApp.FromName = row.Columns[3].GetString_()
+		newApp.To = row.Columns[4].GetString_()
+		newApp.ToName = row.Columns[5].GetString_()
+		newApp.Quantity = row.Columns[6].GetString_()
+		newApp.Type = row.Columns[7].GetString_()
+		newApp.Status = row.Columns[8].GetString_()
+		newApp.LastUpdateDate = row.Columns[9].GetString_()
+		
+		//if (newApp.From == Esco && newApp.To != Esco) && (newApp.Status == "Pending" || newApp.Status == "Cancel" || newApp.Status == "Reject") {
+		res2E=append(res2E,newApp)	
+		//}				
+	}
+    mapB, _ := json.Marshal(res2E)
+    fmt.Println(string(mapB))
+	
+	fmt.Println("function --> getAllTransactions() Exit.")
 	
 	return mapB, nil
 }
@@ -679,11 +754,13 @@ func (t *SKH) getTransactionReceived(stub shim.ChaincodeStubInterface, args []st
 		newApp.TransId = row.Columns[0].GetString_()
 		newApp.TransDate = row.Columns[1].GetString_()
 		newApp.From = row.Columns[2].GetString_()
-		newApp.To = row.Columns[3].GetString_()
-		newApp.Quantity = row.Columns[4].GetString_()
-		newApp.Type = row.Columns[5].GetString_()
-		newApp.Status = row.Columns[6].GetString_()
-		newApp.LastUpdateDate = row.Columns[7].GetString_()
+		newApp.FromName = row.Columns[3].GetString_()
+		newApp.To = row.Columns[4].GetString_()
+		newApp.ToName = row.Columns[5].GetString_()
+		newApp.Quantity = row.Columns[6].GetString_()
+		newApp.Type = row.Columns[7].GetString_()
+		newApp.Status = row.Columns[8].GetString_()
+		newApp.LastUpdateDate = row.Columns[9].GetString_()
 		
 		if (newApp.To == Esco && newApp.From != Esco) && (newApp.Status == "Pending" || newApp.Status == "Cancel" || newApp.Status == "Reject") {
 		res2E=append(res2E,newApp)		
@@ -724,11 +801,13 @@ func (t *SKH) getTransactionAccepted(stub shim.ChaincodeStubInterface, args []st
 		newApp.TransId = row.Columns[0].GetString_()
 		newApp.TransDate = row.Columns[1].GetString_()
 		newApp.From = row.Columns[2].GetString_()
-		newApp.To = row.Columns[3].GetString_()
-		newApp.Quantity = row.Columns[4].GetString_()
-		newApp.Type = row.Columns[5].GetString_()
-		newApp.Status = row.Columns[6].GetString_()
-		newApp.LastUpdateDate = row.Columns[7].GetString_()
+		newApp.FromName = row.Columns[3].GetString_()
+		newApp.To = row.Columns[4].GetString_()
+		newApp.ToName = row.Columns[5].GetString_()
+		newApp.Quantity = row.Columns[6].GetString_()
+		newApp.Type = row.Columns[7].GetString_()
+		newApp.Status = row.Columns[8].GetString_()
+		newApp.LastUpdateDate = row.Columns[9].GetString_()
 		
 		if (newApp.From == Esco || newApp.To == Esco) && (newApp.Status == Status) {
 		res2E=append(res2E,newApp)	
@@ -781,6 +860,9 @@ func (t *SKH) Query(stub shim.ChaincodeStubInterface, function string, args []st
 	}else if function == "getTransactionAccepted" { 
 			 t := SKH{}
 			 return t.getTransactionAccepted(stub, args)
+	}else if function == "getAllTransactions" { 
+			 t := SKH{}
+			 return t.getAllTransactions(stub, args)
 	}
 	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
 }
