@@ -182,9 +182,9 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 		
 		escoFrom := row.Columns[2].GetString_()
 		escoTo := row.Columns[4].GetString_()
-		transQuantity, _:=strconv.ParseInt(row.Columns[4].GetString_(), 10, 0) 
-		transType := row.Columns[5].GetString_()
-		transStatus := row.Columns[6].GetString_()
+		transQuantity, _:=strconv.ParseInt(row.Columns[6].GetString_(), 10, 0) 
+		transType := row.Columns[7].GetString_()
+		transStatus := row.Columns[8].GetString_()
 	
 		fmt.Println("function --> addTransaction() :: TransId [%s], escoFrom [%s], escoTo [%s], Quantity [%s], TransType [%s], Status [%s]", transId, escoFrom, escoTo, transQuantity, transType, transStatus)
 	
@@ -223,7 +223,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Quantity Transfer from
 			fmt.Println("function --> acceptTransaction() :: Condition --> BUY")
 			
-			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
+			totalQuantity, _:=strconv.ParseInt(row1.Columns[3].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) + int(transQuantity))
 			
 			fmt.Println("function --> acceptTransaction() :: Update EscoFrom Before [%d] After [%d] update",totalQuantity, updateQuantity)
@@ -245,7 +245,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			}
 			
 			//Update Quantity Transfer to
-			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
+			totalQuantity1, _:=strconv.ParseInt(row2.Columns[3].GetString_(), 10, 0)
 			updateQuantity1 :=strconv.Itoa(int(totalQuantity1) - int(transQuantity))
 			
 			fmt.Println("function --> acceptTransaction() :: Update EscoTo Before [%d] After [%d] update",totalQuantity1, updateQuantity1)
@@ -300,7 +300,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			//Update Quantity Transfer from
 			fmt.Println("function --> acceptTransaction() :: Condition --> SELL")
 			
-			totalQuantity, _:=strconv.ParseInt(row1.Columns[2].GetString_(), 10, 0)
+			totalQuantity, _:=strconv.ParseInt(row1.Columns[3].GetString_(), 10, 0)
 			updateQuantity :=  strconv.Itoa(int(totalQuantity) - int(transQuantity))
 			
 			fmt.Println("function --> acceptTransaction() :: Update EscoFrom Before [%d] After [%d] update",totalQuantity, updateQuantity)
@@ -322,7 +322,7 @@ func (t *SKH) acceptTransaction(stub shim.ChaincodeStubInterface, args []string)
 			}
 			
 			//Update Quantity Transfer to
-			totalQuantity1, _:=strconv.ParseInt(row2.Columns[2].GetString_(), 10, 0)
+			totalQuantity1, _:=strconv.ParseInt(row2.Columns[3].GetString_(), 10, 0)
 			updateQuantity1 :=  strconv.Itoa(int(totalQuantity1) + int(transQuantity))
 			
 			fmt.Println("function --> acceptTransaction() :: Update EscoTo Before [%d] After [%d] update",totalQuantity1, updateQuantity1)
@@ -412,7 +412,7 @@ func (t *SKH) changeTransactionStatus(stub shim.ChaincodeStubInterface, args []s
 		//Checking Transaction availability in blocks
 		if len(row.Columns) > 0 {
 		
-			transStatus := row.Columns[6].GetString_()
+			transStatus := row.Columns[8].GetString_()
 		
 			if transStatus == "Pending" {
 			
